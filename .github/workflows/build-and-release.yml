@@ -66,6 +66,24 @@ jobs:
         run: |
           dotnet tool install -g vpk
 
+      - name: Fetch Previous Release for Delta Generation
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          New-Item -ItemType Directory -Force -Path ./releases
+          Write-Host "Fetching previous release from GitHub to calculate delta update..."
+          try {
+            vpk download github `
+              --repoUrl "https://github.com/${{ github.repository }}" `
+              --token $env:GITHUB_TOKEN `
+              --channel "stable" `
+              --outputDir ./releases
+            Write-Host "Previous release packages ready in ./releases for delta diffing."
+          } catch {
+            Write-Host "Initial release or previous release not found. Proceeding with full package."
+          }
+
       - name: Restore NuGet Packages
         run: dotnet restore WinFormsApp1/WinFormsApp1.csproj
 
@@ -76,22 +94,34 @@ jobs:
             -r win-x64 `
             --self-contained true `
             -p:PublishSingleFile=false `
+            -p:DebugType=none `
+            -p:DebugSymbols=false `
             -p:Version=${{ steps.get_version.outputs.version }} `
             -p:AssemblyVersion=${{ steps.get_version.outputs.version }}.0 `
             -p:FileVersion=${{ steps.get_version.outputs.version }}.0 `
             -o ./publish
 
-      - name: Package with Velopack (vpk pack)
+      - name: Package with Velopack (vpk pack with Delta BestSize)
         shell: pwsh
         run: |
-          # Package the release into ./releases
+          # Package the release into ./releases with BestSize delta compression and no redundant portable zip
           vpk pack `
             --packId VelopackUpdateTest `
             --packVersion ${{ steps.get_version.outputs.version }} `
             --packDir ./publish `
             --mainExe VelopackUpdateTest.exe `
             --outputDir ./releases `
-            --channel ${{ github.event.inputs.channel || 'stable' }}
+            --channel "stable" `
+            --delta BestSize `
+            --noPortable
+
+      - name: Clean Redundant Assets
+        shell: pwsh
+        run: |
+          # Remove any portable zip files to save storage and keep only setup, delta, and full packages
+          Get-ChildItem -Path ./releases -Filter "*.zip" -Recurse | Remove-Item -Force -Verbose
+          Write-Host "Cleaned assets list:"
+          Get-ChildItem ./releases | Select-Object Name, Length
 
       - name: Upload Artifacts to Workflow
         uses: actions/upload-artifact@v4
@@ -106,11 +136,8 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           $tag = "${{ steps.get_version.outputs.tag }}"
-          Write-Host "Attaching Velopack assets to GitHub Release tag: $tag"
+          Write-Host "Uploading Velopack assets to GitHub Release tag: $tag"
           
-          # List generated files
-          Get-ChildItem ./releases | Select-Object Name, Length
-          
-          # Upload all files directly to the GitHub Release using GitHub CLI
+          # Upload files directly to the GitHub Release using GitHub CLI
           $files = Get-ChildItem ./releases/* | ForEach-Object { $_.FullName }
           gh release upload $tag $files --clobber

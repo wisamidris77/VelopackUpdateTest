@@ -10,8 +10,6 @@ namespace VelopackUpdateTest.UI;
 public class UpdateDialogForm : Form
 {
     private readonly ReleaseInfo _targetRelease;
-    private readonly bool _simulationMode;
-    private readonly bool _simulateFailure;
     private CancellationTokenSource? _downloadCts;
 
     // UI Controls
@@ -22,6 +20,7 @@ public class UpdateDialogForm : Form
 
     private ModernCard _cardHero = null!;
     private ModernBadge _badgeStatus = null!;
+    private Label _lblVersionTitle = null!;
     private Label _lblVersionFlow = null!;
     private Label _lblReleaseDateAndSize = null!;
 
@@ -37,18 +36,16 @@ public class UpdateDialogForm : Form
     private ModernProgressBar _progressBar = null!;
 
     private Panel _pnlFooter = null!;
-    private ModernBadge _badgeMode = null!;
+    private ModernBadge _badgeType = null!;
     private ModernButton _btnLater = null!;
     private ModernButton _btnUpdate = null!;
 
     private bool _isDownloading = false;
     private bool _isDownloaded = false;
 
-    public UpdateDialogForm(ReleaseInfo targetRelease, bool simulationMode = true, bool simulateFailure = false)
+    public UpdateDialogForm(ReleaseInfo targetRelease)
     {
         _targetRelease = targetRelease;
-        _simulationMode = simulationMode;
-        _simulateFailure = simulateFailure;
 
         InitializeComponent();
         ApplyReleaseData();
@@ -60,7 +57,7 @@ public class UpdateDialogForm : Form
 
         Text = _targetRelease.IsMandatory
             ? "🚨 Required Update Available - VelopackUpdateTest"
-            : "Update Available - VelopackUpdateTest";
+            : $"Update Available - {_targetRelease.Title}";
 
         BackColor = ModernTheme.Background;
         ForeColor = ModernTheme.TextPrimary;
@@ -70,7 +67,7 @@ public class UpdateDialogForm : Form
         MinimizeBox = false;
         ShowInTaskbar = true;
         StartPosition = FormStartPosition.CenterParent;
-        ClientSize = new Size(640, 680);
+        ClientSize = new Size(650, 700);
 
         // Header Panel
         _pnlHeader = new Panel
@@ -93,8 +90,8 @@ public class UpdateDialogForm : Form
         _lblHeaderSubtitle = new Label
         {
             Text = _targetRelease.IsMandatory
-                ? "Mandatory security & runtime update required"
-                : "A new version is available for download",
+                ? "Mandatory update required by policy"
+                : "A new version has been published on GitHub",
             Font = new Font("Segoe UI", 8.5f),
             ForeColor = _targetRelease.IsMandatory ? ModernTheme.Danger : ModernTheme.TextSecondary,
             AutoSize = true,
@@ -125,11 +122,11 @@ public class UpdateDialogForm : Form
             Padding = new Padding(20, 14, 20, 14)
         };
 
-        _badgeMode = new ModernBadge
+        _badgeType = new ModernBadge
         {
-            BadgeText = _simulationMode ? "Simulation Active" : "Live Velopack API",
-            BadgeColor = _simulationMode ? ModernTheme.Warning : ModernTheme.Success,
-            Width = 140,
+            BadgeText = _targetRelease.IsDelta ? "1-Version Delta (~500 KB)" : "Full Installer (~50 MB)",
+            BadgeColor = _targetRelease.IsDelta ? ModernTheme.Success : ModernTheme.Primary,
+            Width = 190,
             Location = new Point(20, 20)
         };
 
@@ -139,22 +136,22 @@ public class UpdateDialogForm : Form
             Style = ButtonStyle.Secondary,
             Width = 140,
             Height = 38,
-            Location = new Point(340, 15),
+            Location = new Point(350, 15),
             Enabled = !_targetRelease.IsMandatory
         };
         _btnLater.Click += (s, e) => Close();
 
         _btnUpdate = new ModernButton
         {
-            Text = _targetRelease.IsMandatory ? "🚨 Install Update Now" : "Update Now",
+            Text = _targetRelease.IsMandatory ? "🚨 Install Required Update" : "Update Now",
             Style = _targetRelease.IsMandatory ? ButtonStyle.Danger : ButtonStyle.Primary,
-            Width = 150,
+            Width = 140,
             Height = 38,
-            Location = new Point(490, 15)
+            Location = new Point(500, 15)
         };
         _btnUpdate.Click += async (s, e) => await HandleUpdateClickAsync();
 
-        _pnlFooter.Controls.Add(_badgeMode);
+        _pnlFooter.Controls.Add(_badgeType);
         _pnlFooter.Controls.Add(_btnLater);
         _pnlFooter.Controls.Add(_btnUpdate);
 
@@ -173,8 +170,8 @@ public class UpdateDialogForm : Form
         _cardHero = new ModernCard
         {
             Location = new Point(20, curY),
-            Width = 580,
-            Height = 90,
+            Width = 590,
+            Height = 110,
             CardColor = ModernTheme.CardBackground,
             BorderColor = _targetRelease.IsMandatory ? ModernTheme.Danger : ModernTheme.Border
         };
@@ -184,32 +181,43 @@ public class UpdateDialogForm : Form
             BadgeText = _targetRelease.IsMandatory ? "CRITICAL MANDATORY UPDATE" : "NEW RELEASE READY",
             BadgeColor = _targetRelease.IsMandatory ? ModernTheme.Danger : ModernTheme.Primary,
             Width = 230,
-            Location = new Point(16, 14)
+            Location = new Point(16, 12)
+        };
+
+        // Use the exact GitHub Release Name for the title!
+        _lblVersionTitle = new Label
+        {
+            Text = _targetRelease.Title,
+            Font = new Font("Segoe UI", 12.5f, FontStyle.Bold),
+            ForeColor = Color.White,
+            AutoSize = true,
+            Location = new Point(16, 42)
         };
 
         _lblVersionFlow = new Label
         {
-            Text = $"v{VelopackUpdateService.Instance.CurrentVersion}  ──►  v{_targetRelease.Version}",
-            Font = new Font("Segoe UI", 13f, FontStyle.Bold),
-            ForeColor = Color.White,
+            Text = $"Current: v{VelopackUpdateService.Instance.CurrentVersion}  ──►  Target: v{_targetRelease.Version}",
+            Font = new Font("Segoe UI", 8.8f, FontStyle.Bold),
+            ForeColor = ModernTheme.Primary,
             AutoSize = true,
-            Location = new Point(16, 46)
+            Location = new Point(16, 72)
         };
 
         _lblReleaseDateAndSize = new Label
         {
-            Text = $"Size: {_targetRelease.SizeDisplay}  •  Released: {_targetRelease.ReleaseDate:MMM dd, yyyy}  •  Channel: {_targetRelease.Channel}",
+            Text = $"Size: {_targetRelease.SizeDisplay}  •  Released: {_targetRelease.ReleaseDate:MMM dd, yyyy}",
             Font = new Font("Segoe UI", 8.5f),
             ForeColor = ModernTheme.TextSecondary,
             AutoSize = true,
-            Location = new Point(260, 52)
+            Location = new Point(320, 72)
         };
 
         _cardHero.Controls.Add(_badgeStatus);
+        _cardHero.Controls.Add(_lblVersionTitle);
         _cardHero.Controls.Add(_lblVersionFlow);
         _cardHero.Controls.Add(_lblReleaseDateAndSize);
         pnlContent.Controls.Add(_cardHero);
-        curY += 102;
+        curY += 122;
 
         // Mandatory Notice Card (if mandatory)
         if (_targetRelease.IsMandatory)
@@ -217,7 +225,7 @@ public class UpdateDialogForm : Form
             _cardMandatoryNotice = new ModernCard
             {
                 Location = new Point(20, curY),
-                Width = 580,
+                Width = 590,
                 Height = 70,
                 CardColor = ModernTheme.DangerBg,
                 BorderColor = ModernTheme.Danger
@@ -225,11 +233,11 @@ public class UpdateDialogForm : Form
 
             _lblMandatoryText = new Label
             {
-                Text = $"⚠️ Required Update: {_targetRelease.MandatoryReason}\nVelopackUpdateTest requires this patch before standard usage can continue.",
+                Text = $"⚠️ Required Update: {_targetRelease.MandatoryReason}\nThis version is mandatory to ensure application integrity and connectivity.",
                 Font = new Font("Segoe UI", 8.8f, FontStyle.Regular),
                 ForeColor = Color.White,
                 Location = new Point(14, 12),
-                Size = new Size(550, 46)
+                Size = new Size(560, 46)
             };
 
             _cardMandatoryNotice.Controls.Add(_lblMandatoryText);
@@ -237,19 +245,19 @@ public class UpdateDialogForm : Form
             curY += 80;
         }
 
-        // Changelog Card
+        // Changelog Card (Displays GitHub Release Description)
         _cardChangelog = new ModernCard
         {
             Location = new Point(20, curY),
-            Width = 580,
-            Height = 220,
+            Width = 590,
+            Height = 230,
             CardColor = ModernTheme.CardBackground,
             BorderColor = ModernTheme.Border
         };
 
         var lblChangelogTitle = new Label
         {
-            Text = "WHAT'S NEW IN THIS VERSION",
+            Text = "RELEASE NOTES & CHANGELOG (FROM GITHUB)",
             Font = new Font("Segoe UI", 8.5f, FontStyle.Bold),
             ForeColor = ModernTheme.TextSecondary,
             Location = new Point(16, 12),
@@ -259,26 +267,26 @@ public class UpdateDialogForm : Form
         _rtbChangelog = new RichTextBox
         {
             Location = new Point(16, 36),
-            Width = 548,
-            Height = 168,
+            Width = 558,
+            Height = 178,
             BackColor = ModernTheme.CardBackground,
             ForeColor = ModernTheme.TextPrimary,
             BorderStyle = BorderStyle.None,
             ReadOnly = true,
             ScrollBars = RichTextBoxScrollBars.Vertical,
-            Font = new Font("Segoe UI", 9.2f)
+            Font = new Font("Segoe UI", 9.5f)
         };
 
         _cardChangelog.Controls.Add(lblChangelogTitle);
         _cardChangelog.Controls.Add(_rtbChangelog);
         pnlContent.Controls.Add(_cardChangelog);
-        curY += 232;
+        curY += 242;
 
-        // Progress Card (initially hidden or collapsed)
+        // Progress Card (revealed during download)
         _cardProgress = new ModernCard
         {
             Location = new Point(20, curY),
-            Width = 580,
+            Width = 590,
             Height = 84,
             CardColor = ModernTheme.BackgroundDark,
             BorderColor = ModernTheme.Border,
@@ -306,7 +314,7 @@ public class UpdateDialogForm : Form
         _progressBar = new ModernProgressBar
         {
             Location = new Point(16, 40),
-            Width = 548,
+            Width = 558,
             Height = 18,
             Value = 0,
             BarColor = _targetRelease.IsMandatory ? ModernTheme.Danger : ModernTheme.Primary,
@@ -330,46 +338,18 @@ public class UpdateDialogForm : Form
     {
         _rtbChangelog.Clear();
 
-        // Style the rich text changelog
-        AppendFormattedLine($"🚀 {_targetRelease.Title}\n", Color.FromArgb(168, 85, 247), true, 10.5f);
-        AppendFormattedLine($"{_targetRelease.Summary}\n\n", ModernTheme.TextSecondary, false, 9f);
+        // Release Title
+        AppendFormattedLine($"🚀 {_targetRelease.Title}\n\n", Color.FromArgb(168, 85, 247), true, 11f);
+
+        // Release Description (Changelog content from GitHub)
+        AppendFormattedLine($"{_targetRelease.Summary}\n\n", ModernTheme.TextPrimary, false, 9.5f);
 
         if (_targetRelease.Features.Count > 0)
         {
-            AppendFormattedLine("✨ NEW FEATURES:\n", ModernTheme.Success, true, 9.5f);
+            AppendFormattedLine("HIGHLIGHTS:\n", ModernTheme.Success, true, 9.5f);
             foreach (var f in _targetRelease.Features)
             {
-                AppendFormattedLine($"  • {f}\n", ModernTheme.TextPrimary, false, 9f);
-            }
-            AppendFormattedLine("\n", ModernTheme.TextPrimary, false, 6f);
-        }
-
-        if (_targetRelease.Improvements.Count > 0)
-        {
-            AppendFormattedLine("⚡ IMPROVEMENTS & POLISH:\n", ModernTheme.Primary, true, 9.5f);
-            foreach (var imp in _targetRelease.Improvements)
-            {
-                AppendFormattedLine($"  • {imp}\n", ModernTheme.TextPrimary, false, 9f);
-            }
-            AppendFormattedLine("\n", ModernTheme.TextPrimary, false, 6f);
-        }
-
-        if (_targetRelease.Fixes.Count > 0)
-        {
-            AppendFormattedLine("🐛 BUG FIXES:\n", ModernTheme.Warning, true, 9.5f);
-            foreach (var fix in _targetRelease.Fixes)
-            {
-                AppendFormattedLine($"  • {fix}\n", ModernTheme.TextPrimary, false, 9f);
-            }
-            AppendFormattedLine("\n", ModernTheme.TextPrimary, false, 6f);
-        }
-
-        if (_targetRelease.SecurityUpdates.Count > 0)
-        {
-            AppendFormattedLine("🔒 SECURITY ENHANCEMENTS:\n", ModernTheme.Danger, true, 9.5f);
-            foreach (var sec in _targetRelease.SecurityUpdates)
-            {
-                AppendFormattedLine($"  • {sec}\n", ModernTheme.TextPrimary, false, 9f);
+                AppendFormattedLine($"  • {f}\n", ModernTheme.TextSecondary, false, 9f);
             }
         }
     }
@@ -388,17 +368,13 @@ public class UpdateDialogForm : Form
     {
         if (_isDownloaded)
         {
-            // Execute restart
             _btnUpdate.Enabled = false;
             _btnUpdate.Text = "Restarting...";
-            VelopackUpdateService.Instance.RestartAndApply(_simulationMode);
+            VelopackUpdateService.Instance.RestartAndApply();
             return;
         }
 
-        if (_isDownloading)
-        {
-            return;
-        }
+        if (_isDownloading) return;
 
         _isDownloading = true;
         _btnUpdate.Enabled = false;
@@ -412,8 +388,6 @@ public class UpdateDialogForm : Form
         {
             bool success = await VelopackUpdateService.Instance.DownloadUpdateAsync(
                 _targetRelease,
-                _simulationMode,
-                _simulateFailure,
                 (percent, phase, speed) =>
                 {
                     if (InvokeRequired)
@@ -431,7 +405,7 @@ public class UpdateDialogForm : Form
             {
                 _isDownloaded = true;
                 _isDownloading = false;
-                _lblProgressPhase.Text = "✅ Update package ready to install!";
+                _lblProgressPhase.Text = "✅ Update verified clean with SHA-256 and ready to apply!";
                 _lblProgressPhase.ForeColor = ModernTheme.Success;
                 _lblProgressStats.Text = "100% Complete";
 
@@ -441,10 +415,9 @@ public class UpdateDialogForm : Form
 
                 if (_targetRelease.IsMandatory)
                 {
-                    // Prompt user immediately or auto restart
                     MessageBox.Show(
                         this,
-                        "Mandatory update downloaded successfully.\nClick 'Restart & Apply' to finalize installation and launch version " + _targetRelease.Version + ".",
+                        $"Mandatory update for {_targetRelease.Title} downloaded successfully.\nClick 'Restart & Apply' to finalize installation.",
                         "Update Ready",
                         MessageBoxButtons.OK,
                         MessageBoxIcon.Information);
@@ -489,7 +462,7 @@ public class UpdateDialogForm : Form
         {
             var res = MessageBox.Show(
                 this,
-                "⚠️ MANDATORY UPDATE REQUIRED\n\nVelopackUpdateTest requires version " + _targetRelease.Version + " to continue.\nExiting will close the entire application.\n\nAre you sure you want to exit the application?",
+                $"⚠️ MANDATORY UPDATE REQUIRED\n\n{_targetRelease.Title} is required to continue.\nExiting will close the entire application.\n\nDo you want to exit the application?",
                 "Mandatory Update",
                 MessageBoxButtons.YesNo,
                 MessageBoxIcon.Warning);
@@ -510,7 +483,7 @@ public class UpdateDialogForm : Form
         {
             var res = MessageBox.Show(
                 this,
-                "⚠️ MANDATORY UPDATE REQUIRED\n\nYou must update to continue using VelopackUpdateTest.\n\nDo you want to exit the application completely?",
+                $"⚠️ MANDATORY UPDATE REQUIRED\n\nYou must update to continue using VelopackUpdateTest.\n\nDo you want to exit the application completely?",
                 "Mandatory Update Required",
                 MessageBoxButtons.YesNo,
                 MessageBoxIcon.Warning);

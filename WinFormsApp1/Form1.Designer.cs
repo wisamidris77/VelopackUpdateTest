@@ -29,22 +29,18 @@ partial class Form1
     private Label _lblDiagAppId;
     private Label _lblDiagInstalled;
     private Label _lblDiagChannel;
+    private Label _lblDiagLastCheck;
     private TextBox _txtRepoUrl;
 
-    // Simulation Studio Controls
-    private ModernCard _cardSimulation;
-    private ComboBox _cmbSimTarget;
-    private CheckBox _chkForceUpdate;
-    private CheckBox _chkSimulateError;
+    // Production Update Policies Card
+    private ModernCard _cardPolicies;
     private CheckBox _chkAutoCheckGitHub;
-    private ModernButton _btnLaunchModal;
-    private ModernButton _btnCheckLive;
-    private ModernButton _btnTriggerBanner;
+    private ModernButton _btnManualCheck;
 
-    // Changelog Explorer Controls
+    // Real Changelog Explorer Card
     private ModernCard _cardChangelog;
+    private Label _lblChangelogTitle;
     private Label _lblChangelogMeta;
-    private ComboBox _cmbChangelogVersion;
     private RichTextBox _rtbChangelogView;
 
     // Activity Log Controls
@@ -72,7 +68,7 @@ partial class Form1
         // Form settings
         AutoScaleMode = AutoScaleMode.Font;
         ClientSize = new Size(1160, 780);
-        Text = "VelopackUpdateTest - Auto-Update Simulation & Diagnostics Suite";
+        Text = "VelopackUpdateTest - Production Auto-Update Suite";
         StartPosition = FormStartPosition.CenterScreen;
         MinimumSize = new Size(1040, 700);
         BackColor = ModernTheme.Background;
@@ -106,7 +102,7 @@ partial class Form1
 
         _lblAppSubtitle = new Label
         {
-            Text = "Auto-Update Diagnostic Suite & Simulation Sandbox",
+            Text = "Production Auto-Update & SHA-256 Integrity Verification Dashboard",
             Font = new Font("Segoe UI", 8.5f),
             ForeColor = ModernTheme.TextSecondary,
             AutoSize = true,
@@ -126,20 +122,20 @@ partial class Form1
 
         _badgeStatusMode = new ModernBadge
         {
-            BadgeText = "Simulation Sandbox",
-            BadgeColor = ModernTheme.Warning,
+            BadgeText = "GitHub Feed Active",
+            BadgeColor = ModernTheme.Success,
             Width = 160,
             Location = new Point(510, 22)
         };
 
         _btnQuickCheck = new ModernButton
         {
-            Text = "⚡ Check Updates",
+            Text = "⚡ Check for Updates",
             Style = ButtonStyle.Primary,
-            Width = 145,
+            Width = 160,
             Height = 36,
             Anchor = AnchorStyles.Top | AnchorStyles.Right,
-            Location = new Point(ClientSize.Width - 170, 18)
+            Location = new Point(ClientSize.Width - 185, 18)
         };
 
         _pnlTopNav.Controls.Add(pnlTitleGroup);
@@ -223,12 +219,12 @@ partial class Form1
         {
             Location = new Point(0, 0),
             Width = 440,
-            Height = 230
+            Height = 260
         };
 
         var lblDiagHeader = new Label
         {
-            Text = "VELOPACK RUNTIME & ENVIRONMENT",
+            Text = "RUNTIME & UPDATE ENVIRONMENT",
             Font = new Font("Segoe UI", 8.5f, FontStyle.Bold),
             ForeColor = ModernTheme.TextSecondary,
             Location = new Point(16, 12),
@@ -236,11 +232,11 @@ partial class Form1
         };
 
         int rowY = 38;
-        AddDiagField(_cardDiagnostics, "App Assembly Title:", "VelopackUpdateTest", ref rowY);
-        _lblDiagVersion = AddDiagField(_cardDiagnostics, "Current Version:", "1.0.0", ref rowY);
-        _lblDiagAppId = AddDiagField(_cardDiagnostics, "Velopack AppId:", "VelopackUpdateTest", ref rowY);
-        _lblDiagInstalled = AddDiagField(_cardDiagnostics, "Installed Mode:", "Checking...", ref rowY, ModernTheme.Warning);
-        _lblDiagChannel = AddDiagField(_cardDiagnostics, "Release Channel:", "stable", ref rowY);
+        _lblDiagAppId = AddDiagField(_cardDiagnostics, "App Package Id:", "VelopackUpdateTest", ref rowY);
+        _lblDiagVersion = AddDiagField(_cardDiagnostics, "Current Installed Version:", "1.0.0", ref rowY);
+        _lblDiagInstalled = AddDiagField(_cardDiagnostics, "Velopack Runtime Mode:", "Checking...", ref rowY, ModernTheme.Success);
+        _lblDiagChannel = AddDiagField(_cardDiagnostics, "Update Feed Channel:", "stable", ref rowY);
+        _lblDiagLastCheck = AddDiagField(_cardDiagnostics, "Last Update Check:", "Not yet checked", ref rowY, ModernTheme.TextMuted);
 
         var lblRepo = new Label
         {
@@ -266,134 +262,67 @@ partial class Form1
         _cardDiagnostics.Controls.Add(lblDiagHeader);
         pnlLeftColumn.Controls.Add(_cardDiagnostics);
 
-        // --- LEFT COLUMN: Card 2 Simulation Studio ---
-        _cardSimulation = new ModernCard
+        // --- LEFT COLUMN: Card 2 Policies & Actions ---
+        _cardPolicies = new ModernCard
         {
-            Location = new Point(0, 244),
+            Location = new Point(0, 274),
             Width = 440,
-            Height = 440
+            Height = 410
         };
 
-        var lblSimHeader = new Label
+        var lblPoliciesHeader = new Label
         {
-            Text = "UPDATE SIMULATION STUDIO",
+            Text = "DELTA UPDATE & SHA-256 POLICIES",
             Font = new Font("Segoe UI", 8.5f, FontStyle.Bold),
             ForeColor = ModernTheme.TextSecondary,
             Location = new Point(16, 12),
             AutoSize = true
         };
 
-        var lblSimDesc = new Label
-        {
-            Text = "Simulate all Velopack client update phases (discovery, download progress, forced updates) without publishing releases.",
-            Font = new Font("Segoe UI", 8.5f),
-            ForeColor = ModernTheme.TextMuted,
-            Location = new Point(16, 34),
-            Size = new Size(408, 38)
-        };
-
-        var lblTarget = new Label
-        {
-            Text = "Select Simulation Scenario:",
-            Font = new Font("Segoe UI", 8.5f, FontStyle.Bold),
-            ForeColor = ModernTheme.TextSecondary,
-            Location = new Point(16, 76),
-            AutoSize = true
-        };
-
-        _cmbSimTarget = new ComboBox
-        {
-            Location = new Point(16, 98),
-            Width = 408,
-            DropDownStyle = ComboBoxStyle.DropDownList,
-            BackColor = ModernTheme.BackgroundDark,
-            ForeColor = ModernTheme.TextPrimary,
-            Font = new Font("Segoe UI", 9.5f)
-        };
-        _cmbSimTarget.Items.Add("v1.1.0 - Feature Pack (Optional Update)");
-        _cmbSimTarget.Items.Add("v2.0.0 - Major Overhaul (🚨 MANDATORY FORCE UPDATE)");
-        _cmbSimTarget.Items.Add("v1.0.1 - Stability Patch (Quick Delta)");
-        _cmbSimTarget.SelectedIndex = 1;
-
-        _chkForceUpdate = new CheckBox
-        {
-            Text = "Enforce Mandatory Mode (Lock skip & require install)",
-            Checked = true,
-            Font = new Font("Segoe UI", 9f, FontStyle.Bold),
-            ForeColor = ModernTheme.Danger,
-            Location = new Point(18, 138),
-            AutoSize = true
-        };
-
-        _chkSimulateError = new CheckBox
-        {
-            Text = "Simulate Network Interruption / Drop at 50%",
-            Checked = false,
-            Font = new Font("Segoe UI", 8.8f),
-            ForeColor = ModernTheme.TextSecondary,
-            Location = new Point(18, 164),
-            AutoSize = true
-        };
-
         _chkAutoCheckGitHub = new CheckBox
         {
-            Text = "Auto-Check GitHub Releases on Startup (Background)",
+            Text = "Check for updates automatically on startup",
             Checked = true,
-            Font = new Font("Segoe UI", 8.8f),
+            Font = new Font("Segoe UI", 9f, FontStyle.Bold),
             ForeColor = ModernTheme.Success,
-            Location = new Point(18, 190),
+            Location = new Point(18, 38),
             AutoSize = true
         };
 
-        _btnLaunchModal = new ModernButton
+        _btnManualCheck = new ModernButton
         {
-            Text = "🚀 Launch Cool Update Screen (Simulation)",
+            Text = "🔍 Check for Updates Now",
             Style = ButtonStyle.Primary,
-            Location = new Point(16, 226),
+            Location = new Point(16, 74),
             Width = 408,
-            Height = 44,
-            Font = new Font("Segoe UI", 10.5f, FontStyle.Bold)
+            Height = 42,
+            Font = new Font("Segoe UI", 10f, FontStyle.Bold)
         };
 
-        _btnTriggerBanner = new ModernButton
+        var lblRulesTitle = new Label
         {
-            Text = "🔔 Test Top In-App Update Banner",
-            Style = ButtonStyle.Secondary,
-            Location = new Point(16, 278),
-            Width = 408,
-            Height = 36
+            Text = "AUTOMATED UPDATE LOGIC:",
+            Font = new Font("Segoe UI", 8.5f, FontStyle.Bold),
+            ForeColor = ModernTheme.TextSecondary,
+            Location = new Point(16, 132),
+            AutoSize = true
         };
 
-        _btnCheckLive = new ModernButton
+        var lblRulesText = new Label
         {
-            Text = "🌐 Query Live GitHub Release Feed (Velopack API)",
-            Style = ButtonStyle.Secondary,
-            Location = new Point(16, 322),
-            Width = 408,
-            Height = 36
+            Text = "1. Strict 1-Version Apart Policy:\n   • Exactly 1 version apart (e.g. 1.0.0 ➔ 1.1.0) downloads a tiny delta patch (~500 KB).\n   • Greater than 1 version apart (e.g. 1.0.0 ➔ 1.0.2) automatically enforces the clean full standalone setup.\n\n2. Pre-Delta SHA-256 Integrity Verification:\n   • Before any delta download, all existing local binaries on disk are scanned with SHA-256.\n   • If any local file is modified, corrupted, or missing, the delta is rejected and automatically switched to the full installer.",
+            Font = new Font("Segoe UI", 8.5f),
+            ForeColor = ModernTheme.TextSecondary,
+            Location = new Point(16, 156),
+            Size = new Size(408, 230)
         };
 
-        var lblHelp = new Label
-        {
-            Text = "💡 Tip: When a release is published on GitHub, the app auto-discovers it and opens the update screen automatically.",
-            Font = new Font("Segoe UI", 8.2f, FontStyle.Italic),
-            ForeColor = ModernTheme.TextMuted,
-            Location = new Point(16, 368),
-            Size = new Size(408, 48)
-        };
-
-        _cardSimulation.Controls.Add(lblSimHeader);
-        _cardSimulation.Controls.Add(lblSimDesc);
-        _cardSimulation.Controls.Add(lblTarget);
-        _cardSimulation.Controls.Add(_cmbSimTarget);
-        _cardSimulation.Controls.Add(_chkForceUpdate);
-        _cardSimulation.Controls.Add(_chkSimulateError);
-        _cardSimulation.Controls.Add(_chkAutoCheckGitHub);
-        _cardSimulation.Controls.Add(_btnLaunchModal);
-        _cardSimulation.Controls.Add(_btnTriggerBanner);
-        _cardSimulation.Controls.Add(_btnCheckLive);
-        _cardSimulation.Controls.Add(lblHelp);
-        pnlLeftColumn.Controls.Add(_cardSimulation);
+        _cardPolicies.Controls.Add(lblPoliciesHeader);
+        _cardPolicies.Controls.Add(_chkAutoCheckGitHub);
+        _cardPolicies.Controls.Add(_btnManualCheck);
+        _cardPolicies.Controls.Add(lblRulesTitle);
+        _cardPolicies.Controls.Add(lblRulesText);
+        pnlLeftColumn.Controls.Add(_cardPolicies);
 
         // --- RIGHT COLUMN: Card 3 Changelog Explorer ---
         _cardChangelog = new ModernCard
@@ -404,9 +333,9 @@ partial class Form1
             Height = 350
         };
 
-        var lblChangelogTitle = new Label
+        _lblChangelogTitle = new Label
         {
-            Text = "CURRENT VERSION & CHANGELOG EXPLORER",
+            Text = "LATEST GITHUB RELEASE & CHANGELOG",
             Font = new Font("Segoe UI", 8.5f, FontStyle.Bold),
             ForeColor = ModernTheme.TextSecondary,
             Location = new Point(16, 12),
@@ -415,22 +344,11 @@ partial class Form1
 
         _lblChangelogMeta = new Label
         {
-            Text = "Version History & Release Highlights",
+            Text = "Synchronized from GitHub Releases feed",
             Font = new Font("Segoe UI", 8.5f),
             ForeColor = ModernTheme.TextMuted,
             Location = new Point(16, 32),
             AutoSize = true
-        };
-
-        _cmbChangelogVersion = new ComboBox
-        {
-            Location = new Point(360, 10),
-            Width = 244,
-            Anchor = AnchorStyles.Top | AnchorStyles.Right,
-            DropDownStyle = ComboBoxStyle.DropDownList,
-            BackColor = ModernTheme.BackgroundDark,
-            ForeColor = ModernTheme.TextPrimary,
-            Font = new Font("Segoe UI", 9f)
         };
 
         _rtbChangelogView = new RichTextBox
@@ -443,12 +361,11 @@ partial class Form1
             ForeColor = ModernTheme.TextPrimary,
             BorderStyle = BorderStyle.None,
             ReadOnly = true,
-            Font = new Font("Segoe UI", 9.2f)
+            Font = new Font("Segoe UI", 9.5f)
         };
 
-        _cardChangelog.Controls.Add(lblChangelogTitle);
+        _cardChangelog.Controls.Add(_lblChangelogTitle);
         _cardChangelog.Controls.Add(_lblChangelogMeta);
-        _cardChangelog.Controls.Add(_cmbChangelogVersion);
         _cardChangelog.Controls.Add(_rtbChangelogView);
         pnlRightColumn.Controls.Add(_cardChangelog);
 
@@ -463,7 +380,7 @@ partial class Form1
 
         var lblConsoleTitle = new Label
         {
-            Text = "LIVE VELOPACK ACTIVITY CONSOLE",
+            Text = "LIVE ACTIVITY & SHA-256 CONSOLE",
             Font = new Font("Segoe UI", 8.5f, FontStyle.Bold),
             ForeColor = ModernTheme.TextSecondary,
             Location = new Point(16, 12),
