@@ -106,7 +106,7 @@ public class VelopackUpdateService
         {
             if (string.IsNullOrWhiteSpace(gitHubRepoUrl))
             {
-                gitHubRepoUrl = "https://github.com/your-username/VelopackUpdateTest";
+                gitHubRepoUrl = "https://github.com/wisamidris77/VelopackUpdateTest";
             }
 
             Log("VELOPACK", $"Querying GitHub Releases feed: {gitHubRepoUrl}", Color.FromArgb(99, 102, 241));

@@ -102,7 +102,7 @@ To deploy real updates to your users through GitHub:
    git init
    git add .
    git commit -m "feat: initial commit of VelopackUpdateTest"
-   git remote add origin https://github.com/YOUR_USERNAME/VelopackUpdateTest.git
+   git remote add origin https://github.com/wisamidris77/VelopackUpdateTest.git
    git push -u origin main
    ```
 

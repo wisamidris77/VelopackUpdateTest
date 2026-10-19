@@ -294,7 +294,7 @@ public partial class Form1 : Form
 
         _txtRepoUrl = new TextBox
         {
-            Text = "https://github.com/your-username/VelopackUpdateTest",
+            Text = "https://github.com/wisamidris77/VelopackUpdateTest",
             Location = new Point(16, rowY + 20),
             Width = 408,
             BackColor = ModernTheme.BackgroundDark,
