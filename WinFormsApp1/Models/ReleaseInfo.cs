@@ -14,6 +14,8 @@ public record ReleaseInfo
     public List<string> Improvements { get; init; } = [];
     public List<string> Fixes { get; init; } = [];
     public List<string> SecurityUpdates { get; init; } = [];
+    public string? DownloadUrl { get; init; }
+    public string? InstallerPath { get; set; }
 
     public string ToMarkdown()
     {

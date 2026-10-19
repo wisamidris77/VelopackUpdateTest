@@ -1,9 +1,12 @@
 name: Build and Release (Velopack)
 
 on:
+  release:
+    types: [published, created]
   push:
     tags:
-      - 'v*.*.*'
+      - 'v*'
+      - '[0-9]+.*'
   workflow_dispatch:
     inputs:
       version:
@@ -38,17 +41,25 @@ jobs:
         with:
           dotnet-version: '9.0.x'
 
-      - name: Determine Release Version
+      - name: Determine Release Version & Tag
         id: get_version
         shell: pwsh
         run: |
           if ("${{ github.event_name }}" -eq "workflow_dispatch") {
             $ver = "${{ github.event.inputs.version }}".TrimStart('v')
+            $tag = if ("${{ github.event.inputs.version }}".StartsWith('v')) { "${{ github.event.inputs.version }}" } else { "v$ver" }
+          } elseif ("${{ github.event_name }}" -eq "release") {
+            $rawTag = "${{ github.event.release.tag_name }}"
+            $ver = $rawTag.TrimStart('v')
+            $tag = $rawTag
           } else {
-            $ver = "${{ github.ref_name }}".TrimStart('v')
+            $rawTag = "${{ github.ref_name }}"
+            $ver = $rawTag.TrimStart('v')
+            $tag = $rawTag
           }
-          Write-Host "Releasing version: $ver"
+          Write-Host "Releasing version: $ver with tag: $tag"
           "version=$ver" >> $env:GITHUB_OUTPUT
+          "tag=$tag" >> $env:GITHUB_OUTPUT
 
       - name: Install Velopack CLI (vpk)
         shell: pwsh
@@ -82,24 +93,24 @@ jobs:
             --outputDir ./releases `
             --channel ${{ github.event.inputs.channel || 'stable' }}
 
-      - name: Upload Artifacts (Setup and Deltas)
+      - name: Upload Artifacts to Workflow
         uses: actions/upload-artifact@v4
         with:
           name: Velopack-Release-${{ steps.get_version.outputs.version }}
           path: ./releases/*
 
-      - name: Publish to GitHub Releases (Velopack vpk upload)
+      - name: Upload Assets to GitHub Release
         shell: pwsh
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          $prereleaseArg = if ("${{ github.event.inputs.is_prerelease }}" -eq "true") { "--prerelease" } else { "" }
+          $tag = "${{ steps.get_version.outputs.tag }}"
+          Write-Host "Attaching Velopack assets to GitHub Release tag: $tag"
           
-          # Upload packages directly to GitHub Releases and generate delta index
-          vpk upload github `
-            --repoUrl "https://github.com/${{ github.repository }}" `
-            --token $env:GITHUB_TOKEN `
-            --channel ${{ github.event.inputs.channel || 'stable' }} `
-            --tag "v${{ steps.get_version.outputs.version }}" `
-            --outputDir ./releases `
-            $prereleaseArg
+          # List generated files
+          Get-ChildItem ./releases | Select-Object Name, Length
+          
+          # Upload all files directly to the GitHub Release using GitHub CLI
+          $files = Get-ChildItem ./releases/* | ForEach-Object { $_.FullName }
+          gh release upload $tag $files --clobber
